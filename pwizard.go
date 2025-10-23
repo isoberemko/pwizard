@@ -5,9 +5,11 @@ import (
 	"math/rand"
 )
 
-const nums = "1234567890"
-const symbols = "!@#$%^&*()-_=+/?[]{}`~"
-const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const (
+	nums    = "1234567890"
+	symbols = "!@#$%^&*()-_=+/?[]{}`~"
+	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
 
 func aggregateString(substrings ...string) (aggregatedString string) {
 	for _, substring := range substrings {
