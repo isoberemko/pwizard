@@ -11,14 +11,30 @@ const (
 	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
-func aggregateString(substrings ...string) (aggregatedString string) {
+type Password struct {
+	Length        int
+	EnableSymbols bool
+	Type          string
+	Charset       string
+	Password      string
+}
+
+func AddPasswordConfiguration(Length int, EnableSymbols bool, Type string) Password {
+	return Password{
+		Length:        Length,
+		EnableSymbols: EnableSymbols,
+		Type:          Type,
+	}
+}
+
+func AggregateString(substrings ...string) (aggregatedString string) {
 	for _, substring := range substrings {
 		aggregatedString += substring
 	}
 	return aggregatedString
 }
 
-func passwordGenerate(charset string, length int) (password string) {
+func PasswordGenerate(charset string, length int) (password string) {
 	charsetLen := len(charset)
 	for range length {
 		password += string(charset[rand.Intn(charsetLen)])
@@ -27,22 +43,24 @@ func passwordGenerate(charset string, length int) (password string) {
 }
 
 func main() {
-	var (
-		charset  string
-		password struct {
-			length        int
-			enableSymbols bool
+	passwords := []Password{}
+
+	passwords = append(passwords, AddPasswordConfiguration(8, false, "Test8"))
+	passwords = append(passwords, AddPasswordConfiguration(12, false, "Test12"))
+	passwords = append(passwords, AddPasswordConfiguration(18, true, "Complex"))
+
+	for i := range passwords {
+		if passwords[i].EnableSymbols {
+			passwords[i].Charset = AggregateString(nums, symbols, letters)
+		} else {
+			passwords[i].Charset = AggregateString(nums, letters)
 		}
-	)
-
-	password.length = 18
-
-	if password.enableSymbols {
-		charset = aggregateString(nums, symbols, letters)
-	} else {
-		charset = aggregateString(nums, letters)
+		passwords[i].Password = PasswordGenerate(passwords[i].Charset, passwords[i].Length)
+		fmt.Println(
+			passwords[i].Type, "\n",
+			passwords[i].EnableSymbols, "\n",
+			passwords[i].Length, "\n",
+			passwords[i].Password)
+		fmt.Println()
 	}
-
-	fmt.Println(passwordGenerate(charset, password.length))
-
 }
