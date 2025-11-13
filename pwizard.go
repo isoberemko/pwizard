@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 )
 
 const (
@@ -12,19 +14,11 @@ const (
 )
 
 type Password struct {
-	Length        int
-	EnableSymbols bool
-	Type          string
+	Length        int    `json:"length"`
+	EnableSymbols bool   `json:"symbols"`
+	Type          string `json:"name"`
 	Charset       string
 	Password      string
-}
-
-func AddPasswordConfiguration(Length int, EnableSymbols bool, Type string) Password {
-	return Password{
-		Length:        Length,
-		EnableSymbols: EnableSymbols,
-		Type:          Type,
-	}
 }
 
 func AggregateString(substrings ...string) (aggregatedString string) {
@@ -45,9 +39,15 @@ func PasswordGenerate(charset string, length int) (password string) {
 func main() {
 	passwords := []Password{}
 
-	passwords = append(passwords, AddPasswordConfiguration(8, false, "Test8"))
-	passwords = append(passwords, AddPasswordConfiguration(12, false, "Test12"))
-	passwords = append(passwords, AddPasswordConfiguration(18, true, "Complex"))
+	configJson, err := os.ReadFile("passwords.json")
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(configJson, &passwords)
+	if err != nil {
+		panic(err)
+	}
 
 	for i := range passwords {
 		if passwords[i].EnableSymbols {
