@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 const (
@@ -30,7 +31,7 @@ func (pws *Passwords) PasswordsConfigure(configPath string) error {
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(configJson, &pws)
+	err = json.Unmarshal(configJson, pws)
 	if err != nil {
 		return err
 	}
@@ -45,10 +46,7 @@ func (pw *Password) PasswordValidate() error {
 }
 
 func AggregateString(substrings ...string) (aggregatedString string) {
-	for _, substring := range substrings {
-		aggregatedString += substring
-	}
-	return aggregatedString
+	return strings.Join(substrings, "")
 }
 
 func CryptoPasswordGenerate(charset string, length int) (string, error) {
@@ -64,7 +62,7 @@ func CryptoPasswordGenerate(charset string, length int) (string, error) {
 }
 
 func main() {
-	configPath := flag.String("config", "passwords.json", "config file path")
+	configPath := flag.String("config", "/etc/pwizard/passwords.json", "config file path")
 	flag.Parse()
 
 	var passwords Passwords
@@ -91,11 +89,6 @@ func main() {
 			fmt.Println("Can not generate password for", passwords[i].Type, ":", err)
 			continue
 		}
-		fmt.Println(
-			passwords[i].Type, "\n",
-			passwords[i].EnableSymbols, "\n",
-			passwords[i].Length, "\n",
-			passwords[i].Password)
-		fmt.Println()
+		fmt.Printf("%v: %v\n\n", passwords[i].Type, passwords[i].Password)
 	}
 }
