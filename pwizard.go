@@ -1,9 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"log"
 	"os"
 )
 
@@ -28,12 +29,16 @@ func AggregateString(substrings ...string) (aggregatedString string) {
 	return aggregatedString
 }
 
-func PasswordGenerate(charset string, length int) (password string) {
-	charsetLen := len(charset)
-	for range length {
-		password += string(charset[rand.Intn(charsetLen)])
+func CryptoPasswordGenerate(charset string, length int) (string, error) {
+	bytes, secureString := make([]byte, length), make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
 	}
-	return password
+	charsetLength := len(charset)
+	for i := range bytes {
+		secureString[i] = charset[bytes[i]%byte(charsetLength)]
+	}
+	return string(secureString), nil
 }
 
 func main() {
@@ -55,7 +60,9 @@ func main() {
 		} else {
 			passwords[i].Charset = AggregateString(nums, letters)
 		}
-		passwords[i].Password = PasswordGenerate(passwords[i].Charset, passwords[i].Length)
+		if passwords[i].Password, err = CryptoPasswordGenerate(passwords[i].Charset, passwords[i].Length); err != nil {
+			log.Println(err)
+		}
 		fmt.Println(
 			passwords[i].Type, "\n",
 			passwords[i].EnableSymbols, "\n",
