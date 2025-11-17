@@ -3,8 +3,9 @@ package main
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -14,12 +15,33 @@ const (
 	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
+type Passwords []Password
+
 type Password struct {
 	Length        int    `json:"length"`
 	EnableSymbols bool   `json:"symbols"`
 	Type          string `json:"name"`
 	Charset       string
 	Password      string
+}
+
+func (pws *Passwords) PasswordsConfigure(configPath string) error {
+	configJson, err := os.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(configJson, &pws)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pw *Password) PasswordValidate() error {
+	if pw.Length < 4 {
+		return errors.New("Password length can not be less then 4 symbols")
+	}
+	return nil
 }
 
 func AggregateString(substrings ...string) (aggregatedString string) {
@@ -30,38 +52,44 @@ func AggregateString(substrings ...string) (aggregatedString string) {
 }
 
 func CryptoPasswordGenerate(charset string, length int) (string, error) {
-	bytes, secureString := make([]byte, length), make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
+	randomBytes, secureString := make([]byte, length), make([]byte, length)
+	if _, err := rand.Read(randomBytes); err != nil {
 		return "", err
 	}
 	charsetLength := len(charset)
-	for i := range bytes {
-		secureString[i] = charset[bytes[i]%byte(charsetLength)]
+	for i := range randomBytes {
+		secureString[i] = charset[randomBytes[i]%byte(charsetLength)]
 	}
 	return string(secureString), nil
 }
 
 func main() {
-	passwords := []Password{}
+	configPath := flag.String("config", "passwords.json", "config file path")
+	flag.Parse()
 
-	configJson, err := os.ReadFile("passwords.json")
-	if err != nil {
-		panic(err)
+	var passwords Passwords
+
+	if err := passwords.PasswordsConfigure(*configPath); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
-
-	err = json.Unmarshal(configJson, &passwords)
-	if err != nil {
-		panic(err)
+	for i := range passwords {
+		if err := passwords[i].PasswordValidate(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 
 	for i := range passwords {
+		var err error
 		if passwords[i].EnableSymbols {
 			passwords[i].Charset = AggregateString(nums, symbols, letters)
 		} else {
 			passwords[i].Charset = AggregateString(nums, letters)
 		}
 		if passwords[i].Password, err = CryptoPasswordGenerate(passwords[i].Charset, passwords[i].Length); err != nil {
-			log.Println(err)
+			fmt.Println("Can not generate password for", passwords[i].Type, ":", err)
+			continue
 		}
 		fmt.Println(
 			passwords[i].Type, "\n",
