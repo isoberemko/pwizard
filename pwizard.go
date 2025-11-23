@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 const (
@@ -44,12 +45,7 @@ type Password struct {
 	Password               string
 }
 
-func ErrorCritical(err error) {
-	fmt.Println(err)
-	os.Exit(1)
-}
-
-func (pws *Passwords) PasswordsConfigure(configPath string) error {
+func (pws *Passwords) LoadJson(configPath string) error {
 	configJson, err := os.ReadFile(configPath)
 	if err != nil {
 		return err
@@ -61,14 +57,14 @@ func (pws *Passwords) PasswordsConfigure(configPath string) error {
 	return nil
 }
 
-func (pw *Password) PasswordConfigNormalizeDigits() {
+func (pw *Password) NormalizeDigits() {
 	if pw.Digits == nil {
 		pw.Digits = new(bool)
 		*pw.Digits = true
 	}
 }
 
-func (pw *Password) PasswordConfigNormalizeLetters() {
+func (pw *Password) NormalizeLetters() {
 	if pw.LowercaseOnly == nil {
 		pw.LowercaseOnly = new(bool)
 	}
@@ -81,7 +77,7 @@ func (pw *Password) PasswordConfigNormalizeLetters() {
 	}
 }
 
-func (pw *Password) PasswordConfigNormalizeSymbols() {
+func (pw *Password) NormalizeSymbols() {
 	if pw.EnableSymbolsSafe == nil {
 		pw.EnableSymbolsSafe = new(bool)
 	}
@@ -93,13 +89,13 @@ func (pw *Password) PasswordConfigNormalizeSymbols() {
 	}
 }
 
-func (pw *Password) PasswordConfigNormalize() {
-	pw.PasswordConfigNormalizeDigits()
-	pw.PasswordConfigNormalizeLetters()
-	pw.PasswordConfigNormalizeSymbols()
+func (pw *Password) Normalize() {
+	pw.NormalizeDigits()
+	pw.NormalizeLetters()
+	pw.NormalizeSymbols()
 }
 
-func (pw *Password) PasswordConfigValidateName() error {
+func (pw *Password) ValidateName() error {
 	switch {
 	case pw.Name == nil:
 		return errors.New("password configuration name is not specified")
@@ -109,7 +105,7 @@ func (pw *Password) PasswordConfigValidateName() error {
 	return nil
 }
 
-func (pw *Password) PasswordConfigValidateLength() error {
+func (pw *Password) ValidateLength() error {
 	switch {
 	case pw.Length == nil:
 		return errors.New("password length is not specified")
@@ -119,7 +115,7 @@ func (pw *Password) PasswordConfigValidateLength() error {
 	return nil
 }
 
-func (pw *Password) PasswordConfigValidateLetters() error {
+func (pw *Password) ValidateLetters() error {
 	switch {
 	case *pw.LowercaseOnly && *pw.UppercaseOnly:
 		return errors.New("lowercase-only and uppercase-only modes cannot be enabled at the same time")
@@ -131,7 +127,7 @@ func (pw *Password) PasswordConfigValidateLetters() error {
 	return nil
 }
 
-func (pw *Password) PasswordConfigValidateSymbols() error {
+func (pw *Password) ValidateSymbols() error {
 	if pw.CustomSymbolsSet != nil {
 		switch {
 		case *pw.EnableSymbolsDangerous:
@@ -145,29 +141,30 @@ func (pw *Password) PasswordConfigValidateSymbols() error {
 	return nil
 }
 
-func (pw *Password) PasswordConfigValidate() {
-	if err := pw.PasswordConfigValidateName(); err != nil {
-		ErrorCritical(err)
+func (pw *Password) Validate() error {
+	if err := pw.ValidateName(); err != nil {
+		return err
 	}
-	if err := pw.PasswordConfigValidateLength(); err != nil {
-		ErrorCritical(err)
+	if err := pw.ValidateLength(); err != nil {
+		return err
 	}
-	if err := pw.PasswordConfigValidateLetters(); err != nil {
-		ErrorCritical(err)
+	if err := pw.ValidateLetters(); err != nil {
+		return err
 	}
-	if err := pw.PasswordConfigValidateSymbols(); err != nil {
-		ErrorCritical(err)
+	if err := pw.ValidateSymbols(); err != nil {
+		return err
 	}
+	return nil
 }
 
-func (pw *Password) SetPasswordPreset() error {
-	switch *pw.Preset {
-	case "pin", "Pin", "PIN":
+func (pw *Password) PresetCharset() error {
+	switch strings.ToLower(*pw.Preset) {
+	case "pin":
 		pw.Charset = presetPin
-	case "token", "Token", "TOKEN":
+	case "token":
 		pw.Charset = presetToken
 	default:
-		return errors.New("cannot find preset named " + *pw.Preset + " for " + *pw.Name)
+		return fmt.Errorf("unknown preset %s", *pw.Preset)
 	}
 	return nil
 }
@@ -220,23 +217,29 @@ func main() {
 
 	var passwords Passwords
 
-	if err := passwords.PasswordsConfigure(*configPath); err != nil {
-		ErrorCritical(err)
+	if err := passwords.LoadJson(*configPath); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	for i := range passwords {
 		var err error
 
-		passwords[i].PasswordConfigNormalize()
-		passwords[i].PasswordConfigValidate()
+		passwords[i].Normalize()
+		if err = passwords[i].Validate(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		if passwords[i].Preset != nil {
-			if err = passwords[i].SetPasswordPreset(); err != nil {
-				ErrorCritical(err)
+			if err = passwords[i].PresetCharset(); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
 			}
 		} else {
 			if err = passwords[i].CreateCharset(); err != nil {
-				ErrorCritical(err)
+				fmt.Println(err)
+				os.Exit(1)
 			}
 		}
 
