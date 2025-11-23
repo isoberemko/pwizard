@@ -14,10 +14,16 @@ const (
 	lettersLower = "abcdefghijklmnopqrstuvwxyz"
 	lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	letters      = lettersLower + lettersUpper
+	alphanumeric = digits + letters
 
 	symbolsSafe      = "!@%*_-."
 	symbolsExtended  = symbolsSafe + "#$^&()=+[]{}|;:,<>?~"
 	symbolsDangerous = symbolsExtended + "`\"'\\/"
+)
+
+const (
+	presetPin   = digits
+	presetToken = alphanumeric + "-_"
 )
 
 type Passwords []Password
@@ -33,6 +39,7 @@ type Password struct {
 	Letters                *bool   `json:"letters"`
 	UppercaseOnly          *bool   `json:"uppercase_only"`
 	LowercaseOnly          *bool   `json:"lowercase_only"`
+	Preset                 *string `json:"preset"`
 	Charset                string
 	Password               string
 }
@@ -153,6 +160,18 @@ func (pw *Password) PasswordConfigValidate() {
 	}
 }
 
+func (pw *Password) SetPasswordPreset() error {
+	switch *pw.Preset {
+	case "pin", "Pin", "PIN":
+		pw.Charset = presetPin
+	case "token", "Token", "TOKEN":
+		pw.Charset = presetToken
+	default:
+		return errors.New("cannot find preset named " + *pw.Preset + " for " + *pw.Name)
+	}
+	return nil
+}
+
 func (pw *Password) CreateCharset() error {
 	if *pw.Digits {
 		pw.Charset += digits
@@ -211,13 +230,21 @@ func main() {
 		passwords[i].PasswordConfigNormalize()
 		passwords[i].PasswordConfigValidate()
 
-		if err = passwords[i].CreateCharset(); err != nil {
-			ErrorCritical(err)
+		if passwords[i].Preset != nil {
+			if err = passwords[i].SetPasswordPreset(); err != nil {
+				ErrorCritical(err)
+			}
+		} else {
+			if err = passwords[i].CreateCharset(); err != nil {
+				ErrorCritical(err)
+			}
 		}
+
 		if passwords[i].Password, err = CryptoPasswordGenerate(passwords[i].Charset, *passwords[i].Length); err != nil {
-			fmt.Println("Cannot generate password for", *passwords[i].Name, ":", err)
+			fmt.Println("cannot generate password for", *passwords[i].Name, ":", err)
 			continue
 		}
+
 		fmt.Printf("%v: %v\n\n", *passwords[i].Name, passwords[i].Password)
 	}
 }
