@@ -232,15 +232,13 @@ func main() {
 		}
 
 		if passwords[i].Preset != nil {
-			if err = passwords[i].PresetCharset(); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+			err = passwords[i].PresetCharset()
 		} else {
-			if err = passwords[i].CreateCharset(); err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+			err = passwords[i].CreateCharset()
+		}
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
 
 		if passwords[i].Password, err = CryptoPasswordGenerate(passwords[i].Charset, *passwords[i].Length); err != nil {
